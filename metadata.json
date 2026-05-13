@@ -1,0 +1,6 @@
+{
+  "name": "Remix: Minecraft Mod Porter",
+  "description": "Port Java Edition mods to Bedrock Add-ons for iPad. Fetch assets from GitHub, generate Bedrock JSON, and export .mcaddon files.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
