@@ -38,9 +38,13 @@ export const ModelViewer: React.FC<ModelViewerProps> = ({ json, textureBlob, onU
   
   // Transformation Presets
   const [customPresets, setCustomPresets] = useState<{name: string, size: [number, number, number], origin: [number, number, number]}[]>(() => {
+  try {
     const saved = localStorage.getItem('mp_model_presets');
     return saved ? JSON.parse(saved) : [];
-  });
+  } catch (e) {
+    return [];
+  }
+});
 
   const PRESET_DEFAULTS = [
     { name: 'Full Cube', size: [16, 16, 16], origin: [-8, 0, -8] },
