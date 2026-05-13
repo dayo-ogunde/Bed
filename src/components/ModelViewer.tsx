@@ -693,4 +693,3 @@ const PropertyRow = ({ label, values, onChange, cols = 3 }: { label: string, val
     </div>
   </div>
 );
-
