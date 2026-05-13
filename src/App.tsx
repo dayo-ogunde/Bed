@@ -29,7 +29,22 @@ import { saveToDB, getFromDB } from './lib/idb';
 import { BEDROCK_EXAMPLES } from './constants/ExampleLibrary';
 
 // Initialization
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Polyfill process for browser
+if (typeof window !== 'undefined' && !window.process) {
+  (window as any).process = { env: {} };
+}
+
+// AI Initialization
+const getGeminiKey = () => {
+  try {
+    return process.env.GEMINI_API_KEY || "AIzaSyDIBFOFx8ngq8IzhoO_5SgPNpxwhZp5yl4";
+  } catch (e) {
+    return "";
+  }
+};
+
+const aiKey = getGeminiKey();
+const ai = aiKey ? new GoogleGenAI({ apiKey: aiKey }) : null;
 
 type Step = 'setup' | 'fetch' | 'port' | 'creative' | 'export';
 type Tool = 'geometry' | 'states' | 'scripts' | 'entities';
