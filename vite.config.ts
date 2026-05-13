@@ -16,7 +16,7 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      host: true
+      host: true,
 
       port: 3000,
     },
