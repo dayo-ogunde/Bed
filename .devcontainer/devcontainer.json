@@ -1,0 +1,11 @@
+{
+  "name": "Bed",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  }
+}

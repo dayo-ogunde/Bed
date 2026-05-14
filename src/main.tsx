@@ -3,6 +3,11 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 4c21edb (committed)
 // Global error logger for debugging on mobile
 window.onerror = (message, source, lineno, colno, error) => {
   console.error("GLOBAL ERROR:", message, "at", source, lineno, colno, error);
@@ -26,4 +31,8 @@ if (container) {
       <App />
     </StrictMode>,
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 4c21edb (committed)
