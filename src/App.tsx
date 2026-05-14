@@ -36,7 +36,7 @@ if (typeof window !== 'undefined' && !window.process) {
 // Initialization
 const getGeminiKey = () => {
   try {
-    return process.env.GEMINI_API_KEY || "";
+    return (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   } catch (e) {
     return "";
   }
