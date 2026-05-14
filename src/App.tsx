@@ -28,16 +28,15 @@ import { GoogleGenAI } from "@google/genai";
 import { saveToDB, getFromDB } from './lib/idb';
 import { BEDROCK_EXAMPLES } from './constants/ExampleLibrary';
 
-// Initialization
 // Polyfill process for browser
 if (typeof window !== 'undefined' && !window.process) {
   (window as any).process = { env: {} };
 }
 
-// AI Initialization
+// Initialization
 const getGeminiKey = () => {
   try {
-    return process.env.GEMINI_API_KEY || "AIzaSyDIBFOFx8ngq8IzhoO_5SgPNpxwhZp5yl4";
+    return process.env.GEMINI_API_KEY || "";
   } catch (e) {
     return "";
   }
@@ -50,13 +49,49 @@ type Step = 'setup' | 'fetch' | 'port' | 'creative' | 'export';
 type Tool = 'geometry' | 'states' | 'scripts' | 'entities';
 
 export default function App() {
-  const [activeStep, setActiveStep] = useState<Step>(() => (localStorage.getItem('mp_step') as Step) || 'setup');
+  const [activeStep, setActiveStep] = useState<Step>(() => {
+    try {
+      return (localStorage.getItem('mp_step') as Step) || 'setup';
+    } catch (e) {
+      return 'setup';
+    }
+  });
   const [activeTool, setActiveTool] = useState<Tool>('geometry');
-  const [projectName, setProjectName] = useState(() => localStorage.getItem('mp_name') || 'Cluttered Port');
-  const [projectDesc, setProjectDesc] = useState(() => localStorage.getItem('mp_desc') || 'A port of the Cluttered mod for Bedrock Edition.');
-  const [namespace, setNamespace] = useState(() => localStorage.getItem('mp_namespace') || 'cluttered');
-  const [githubUrl, setGithubUrl] = useState(() => localStorage.getItem('mp_url') || 'https://github.com/YellowChuJelly/Cluttered');
-  const [scrapedFiles, setScrapedFiles] = useState<any[]>(() => JSON.parse(localStorage.getItem('mp_scraped') || '[]'));
+  const [projectName, setProjectName] = useState(() => {
+    try {
+      return localStorage.getItem('mp_name') || 'Cluttered Port';
+    } catch (e) {
+      return 'Cluttered Port';
+    }
+  });
+  const [projectDesc, setProjectDesc] = useState(() => {
+    try {
+      return localStorage.getItem('mp_desc') || 'A port of the Cluttered mod for Bedrock Edition.';
+    } catch (e) {
+      return 'A port of the Cluttered mod for Bedrock Edition.';
+    }
+  });
+  const [namespace, setNamespace] = useState(() => {
+    try {
+      return localStorage.getItem('mp_namespace') || 'cluttered';
+    } catch (e) {
+      return 'cluttered';
+    }
+  });
+  const [githubUrl, setGithubUrl] = useState(() => {
+    try {
+      return localStorage.getItem('mp_url') || 'https://github.com/YellowChuJelly/Cluttered';
+    } catch (e) {
+      return 'https://github.com/YellowChuJelly/Cluttered';
+    }
+  });
+  const [scrapedFiles, setScrapedFiles] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mp_scraped') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
@@ -69,7 +104,13 @@ export default function App() {
   const [bpFiles, setBpFiles] = useState<Record<string, string | Blob>>({});
   
   // AI Forge Content
-  const [ideas, setIdeas] = useState<any[]>(() => JSON.parse(localStorage.getItem('mp_ideas') || '[]'));
+  const [ideas, setIdeas] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mp_ideas') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
   const [isForging, setIsForging] = useState(false);
   const [forgeGuide, setForgeGuide] = useState('');
   const [selectedIdeaIndices, setSelectedIdeaIndices] = useState<Set<number>>(new Set());
@@ -306,6 +347,11 @@ export default function App() {
     setIsForging(true);
     setError(null);
     try {
+      if (!ai) {
+        setError("AI initialization failed. Check your API key.");
+        return;
+      }
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = `Based on the theme of "${projectName}" (${projectDesc}) and the namespace "${namespace}", suggest exactly 5 unique furniture or decoration additions for a Minecraft Bedrock Add-on. 
       ${forgeGuide ? `User Guidance/Focus: "${forgeGuide}"` : ''}
       
@@ -330,12 +376,9 @@ export default function App() {
       Return ONLY a raw JSON array:
       [ { "name": "string", "states": [string], "description": "string", "geometry": "JSON_STRING", "script": "STRING" }, ... ]`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ text: prompt }]
-      });
-
-      const text = response.text;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
       const start = text.indexOf('[');
       const end = text.lastIndexOf(']');
       if (start === -1 || end === -1) throw new Error("AI response did not contain a valid JSON array.");
@@ -361,18 +404,20 @@ export default function App() {
 
     setIsForging(true);
     try {
+      if (!ai) {
+        setError("AI initialization failed. Check your API key.");
+        return;
+      }
       const idea = ideas[index];
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ 
-          text: `Refine this Minecraft Bedrock idea based on user feedback: "${editPrompt}"
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const promptText = `Refine this Minecraft Bedrock idea based on user feedback: "${editPrompt}"
           Original: ${JSON.stringify(idea)}
           
-          Return ONLY the updated JSON object for this single item.` 
-        }]
-      });
+          Return ONLY the updated JSON object for this single item.`;
       
-      const text = response.text;
+      const result = await model.generateContent(promptText);
+      const response = await result.response;
+      const text = response.text();
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}');
       const updatedIdea = JSON.parse(text.substring(start, end + 1));
@@ -451,10 +496,9 @@ export default function App() {
           const baseName = file.name.replace('.json', '');
           const sanitized = baseName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
           
-          const aiRes = await ai.models.generateContent({
-            model: "gemini-3-flash-preview", 
-            contents: [{
-              text: `Convert this Minecraft Java block model to Bedrock Edition format.
+          if (!ai) return;
+          const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const aiResObj = await model.generateContent(`Convert this Minecraft Java block model to Bedrock Edition format.
               
               1. Geometry: format_version 1.12.0, identifier "geometry.${sanitized}".
               2. Block State: standard 1.21.30 format for "${namespace}:${sanitized}".
@@ -466,20 +510,11 @@ export default function App() {
               - Do NOT use deprecated APIs like runCommand on block
               - Return only the function body code, no imports, no exports
               
-              Return a JSON object:
-              {
-                "geometry": "STRING",
-                "block_state": "STRING",
-                "script": "STRING",
-                "client_entity": "STRING"
-              }
-              
               Java Model:
-              ${javaJson}`
-            }]
-          });
+              ${javaJson}`);
           
-          const raw = aiRes.text.replace(/```json|```/g, '').trim();
+          const aiRes = await aiResObj.response;
+          const raw = aiRes.text().replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(raw);
           
           newRpFiles[`models/blocks/${sanitized}.json`] = parsed.geometry || "";
@@ -551,23 +586,22 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
     setIsAiLoading(true);
     setAiExplain(null);
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            text: `You are an expert Minecraft Bedrock Add-on Developer. 
+      if (!ai) {
+        setAiResponse("AI not configured.");
+        return;
+      }
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(`You are an expert Minecraft Bedrock Add-on Developer. 
             The current file being edited is "${selectedFile.name}" (${activeTool}).
             Current Content:
             ${selectedFile.content}
             
             User Request: "${aiQuery}"
             
-            If the user asks to modify the code, return ONLY the updated code block wrapped in triple backticks. If they ask a question, provide a concise explanation.`
-          }
-        ]
-      });
+            If the user asks to modify the code, return ONLY the updated code block wrapped in triple backticks. If they ask a question, provide a concise explanation.`);
       
-      const text = response.text;
+      const response = await result.response;
+      const text = response.text();
       if (text.includes('```')) {
         const newCode = text.split('```')[1].replace(/^[a-z]+\n/, '').trim();
         setSelectedFile({ ...selectedFile, content: newCode });
@@ -587,13 +621,11 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
     if (!selectedFile) return;
     setIsAiLoading(true);
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{
-          text: `Explain what this Minecraft Bedrock ${activeTool} code does in plain, helpful language for a modder. Use bullet points for features like rotation, interaction, or states.\n\nCode:\n${selectedFile.content}`
-        }]
-      });
-      setAiExplain(response.text);
+      if (!ai) return;
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(`Explain what this Minecraft Bedrock ${activeTool} code does in plain, helpful language for a modder. Use bullet points for features like rotation, interaction, or states.\n\nCode:\n${selectedFile.content}`);
+      const text = (await result.response).text();
+      setAiExplain(text);
     } catch (err) {
       console.error(err);
     } finally {
@@ -610,10 +642,9 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
       
       const baseName = filename.replace('.json', '').toLowerCase().replace(/[^a-z0-9_]/g, '_');
       
-      const aiRes = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{
-          text: `Convert this Minecraft Java block model to Bedrock Edition format.
+      if (!ai) return;
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(`Convert this Minecraft Java block model to Bedrock Edition format.
           1. Geometry: format_version 1.12.0, identifier "geometry.${filename.replace('.json', '')}".
           2. Block State: standard 1.21.30 format for "${namespace}:${filename.replace('.json', '')}".
           3. Behavior Script: A COMPLETE, valid Minecraft Bedrock script using @minecraft/server API v1.9.0. Rules:
@@ -623,11 +654,10 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
              - Return only the function body code, no imports, no exports
           4. Client Entity (Optional): standard 1.10.0 format.
           Return a JSON object: { "geometry": "STRING", "block_state": "STRING", "script": "STRING", "client_entity": "STRING" }
-          Java Model: ${javaJson}`
-        }]
-      });
+          Java Model: ${javaJson}`);
       
-      const raw = aiRes.text.replace(/```json|```/g, '').trim();
+      const aiRes = (await result.response).text();
+      const raw = aiRes.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(raw);
       const bedrockGeo = parsed.geometry || "";
       

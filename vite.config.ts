@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -16,11 +16,11 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
     server: {
-      host: true,
+      host: '0.0.0.0',
       port: 3000,
       strictPort: true,
       cors: true,
@@ -30,3 +30,4 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+
