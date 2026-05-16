@@ -427,7 +427,7 @@ export default function App() {
       const idea = ideas[index];
       const result = await ai.models.generateContent({
         model: "gemini-2.0-flash",
-        contents: prompt,
+        contents:  prompt as any,
       });
       const text = result.text ?? "";
 
@@ -525,8 +525,8 @@ export default function App() {
               Java Model:
               ${javaJson}`);
           
-          const aiRes = await aiResObj.response;
-          const raw = aiRes.text().replace(/```json|```/g, '').trim();
+          const aiRes = text;
+          const raw = aiRes.replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(raw);
           
           newRpFiles[`models/blocks/${sanitized}.json`] = parsed.geometry || "";
@@ -661,7 +661,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
           Return a JSON object: { "geometry": "STRING", "block_state": "STRING", "script": "STRING", "client_entity": "STRING" }
           Java Model: ${javaJson}`);
       
-      const aiRes = (await result.responseId).text();
+      const aiRes = text;
       const raw = aiRes.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(raw);
       const bedrockGeo = parsed.geometry || "";
@@ -1471,7 +1471,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
                         // Commit selected ideas to the workspace
                         const newRpFiles = { ...rpFiles };
                         const newBpFiles = { ...bpFiles };
-                        let firstFile = null;
+                        let firstFile: any = null;
 
                         Array.from(selectedIdeaIndices).forEach(idx => {
                           const idea = ideas[idx];
@@ -1822,7 +1822,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
                              <ModelViewer 
                                json={selectedFile?.content || ''} 
                                textureBlob={selectedFile?.textureBlob} 
-                               onUpdate={(newJson) => setSelectedFile(prev => prev ? { ...prev, content: newJson } : null)}
+                               onUpdate={(newJson) => setSelectedFile((prev: any)=> prev? { ...prev, content: newJson } : null)}
                              />
                           </div>
                         ) : (
