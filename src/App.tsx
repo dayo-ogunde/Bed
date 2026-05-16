@@ -24,7 +24,7 @@ import {
 import { ModelViewer } from './components/ModelViewer';
 import { motion, AnimatePresence } from 'motion/react';
 import { createManifest, downloadMcAddon, generateUUID } from './lib/mc-utils';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type Part } from "@google/genai";
 import { saveToDB, getFromDB } from './lib/idb';
 import { BEDROCK_EXAMPLES } from './constants/ExampleLibrary';
 
@@ -45,6 +45,19 @@ const getGeminiKey = () => {
 
 const aiKey = getGeminiKey();
 const ai = aiKey ? new GoogleGenAI({ apiKey: aiKey }) : null;
+// Single reusable AI call — replaces all getGenerativeModel usage
+const askAI = async (prompt: string): Promise<string> => {
+  if (!ai) return "AI not available — check your GEMINI_API_KEY in .env";
+  try {
+    const result = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+    return result.text ?? "";
+  } catch (e: any) {
+    return `AI Error: ${e?.message || String(e)}`;
+  }
+};
 
 type Step = 'setup' | 'fetch' | 'port' | 'creative' | 'export';
 type Tool = 'geometry' | 'states' | 'scripts' | 'entities';
@@ -497,8 +510,7 @@ export default function App() {
           const sanitized = baseName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
           
           if (!ai) return;
-          const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-          const aiResObj = await model.generateContent(`Convert this Minecraft Java block model to Bedrock Edition format.
+          const text = await askAI(`Convert this Minecraft Java block model to Bedrock Edition format.
               
               1. Geometry: format_version 1.12.0, identifier "geometry.${sanitized}".
               2. Block State: standard 1.21.30 format for "${namespace}:${sanitized}".
@@ -590,8 +602,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
         setAiResponse("AI not configured.");
         return;
       }
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent(`You are an expert Minecraft Bedrock Add-on Developer. 
+      const text = await askAI(`You are an expert Minecraft Bedrock Add-on Developer. 
             The current file being edited is "${selectedFile.name}" (${activeTool}).
             Current Content:
             ${selectedFile.content}
@@ -599,9 +610,6 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
             User Request: "${aiQuery}"
             
             If the user asks to modify the code, return ONLY the updated code block wrapped in triple backticks. If they ask a question, provide a concise explanation.`);
-      
-      const response = await result.response;
-      const text = response.text();
       if (text.includes('```')) {
         const newCode = text.split('```')[1].replace(/^[a-z]+\n/, '').trim();
         setSelectedFile({ ...selectedFile, content: newCode });
@@ -622,9 +630,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
     setIsAiLoading(true);
     try {
       if (!ai) return;
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent(`Explain what this Minecraft Bedrock ${activeTool} code does in plain, helpful language for a modder. Use bullet points for features like rotation, interaction, or states.\n\nCode:\n${selectedFile.content}`);
-      const text = (await result.response).text();
+      const text = await askAI(`Explain what this Minecraft Bedrock ${activeTool} code does in plain, helpful language for a modder. Use bullet points for features like rotation, interaction, or states.\n\nCode:\n${selectedFile.content}`);
       setAiExplain(text);
     } catch (err) {
       console.error(err);
@@ -643,14 +649,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
       const baseName = filename.replace('.json', '').toLowerCase().replace(/[^a-z0-9_]/g, '_');
       
       if (!ai) return;
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: prompt,
-      });
-      const text = result.text ?? "";;
-
-         `Convert this Minecraft Java block model to Bedrock Edition format.
+      const text = await askAI(`Convert this Minecraft Java block model to Bedrock Edition format.
           1. Geometry: format_version 1.12.0, identifier "geometry.${filename.replace('.json', '')}".
           2. Block State: standard 1.21.30 format for "${namespace}:${filename.replace('.json', '')}".
           3. Behavior Script: A COMPLETE, valid Minecraft Bedrock script using @minecraft/server API v1.9.0. Rules:
@@ -660,7 +659,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
              - Return only the function body code, no imports, no exports
           4. Client Entity (Optional): standard 1.10.0 format.
           Return a JSON object: { "geometry": "STRING", "block_state": "STRING", "script": "STRING", "client_entity": "STRING" }
-          Java Model: ${javaJson}`;
+          Java Model: ${javaJson}`);
       
       const aiRes = (await result.responseId).text();
       const raw = aiRes.replace(/```json|```/g, '').trim();
