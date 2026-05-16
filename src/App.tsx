@@ -35,9 +35,11 @@ if (typeof window !== 'undefined' && !window.process) {
 
 // Initialization
 const getGeminiKey = () => {
-  try {const key = process.env.GEMINI_API_KEY || "";
-    console.log("Gemini key loaded:", key ? "YES ✓" : "MISSING ✗");
-    return key;
+  try {
+    return (import.meta as any).env.VITE_GEMINI_API_KEY 
+      || (import.meta as any).env.GEMINI_API_KEY
+      || process.env.GEMINI_API_KEY 
+      || "";
   } catch (e) {
     return "";
   }
@@ -50,7 +52,7 @@ const askAI = async (prompt: string): Promise<string> => {
   if (!ai) return "AI not available — check your GEMINI_API_KEY in .env";
   try {
     const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.0-flash-lite",
       contents: prompt,
     });
     return result.text ?? "";
@@ -426,7 +428,7 @@ export default function App() {
       }
       const idea = ideas[index];
       const result = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.0-flash-lite",
         contents:  prompt as any,
       });
       const text = result.text ?? "";
