@@ -257,7 +257,7 @@ export const ModelViewer: React.FC<ModelViewerProps> = ({ json, textureBlob, onU
     const rxY = py * Math.cos(radX) - ryZ * Math.sin(radX);
     const rxZ = py * Math.sin(radX) + ryZ * Math.cos(radX);
     const scale = zoom * 15;
-    return { x: centerX + ryX * scale, y: centerY - rxY * scale, z: rxZ };
+    return { x: centerX + ryX * scale, y: centerY - (rxY - 8)  * scale, z: rxZ };
   };
 
   const draw = () => {
@@ -635,6 +635,20 @@ export const ModelViewer: React.FC<ModelViewerProps> = ({ json, textureBlob, onU
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onWheel={(e) => setZoom(prev => Math.min(Math.max(0.5, prev - e.deltaY * 0.001), 5))}
+          onTouchStart={(e) => {
+  const t = e.touches[0];
+  setIsDragging(true);
+  setLastMouse({ x: t.clientX, y: t.clientY });
+}}
+onTouchMove={(e) => {
+  if (!isDragging) return;
+  const t = e.touches[0];
+  const dx = t.clientX - lastMouse.x;
+  const dy = t.clientY - lastMouse.y;
+  setRotation(prev => ({ x: prev.x + dy * 0.5, y: prev.y + dx * 0.5 }));
+  setLastMouse({ x: t.clientX, y: t.clientY });
+}}
+onTouchEnd={() => setIsDragging(false)}
         >
           <canvas ref={canvasRef} className="w-full h-full" />
           

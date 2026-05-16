@@ -35,8 +35,9 @@ if (typeof window !== 'undefined' && !window.process) {
 
 // Initialization
 const getGeminiKey = () => {
-  try {
-    return (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+  try {const key = process.env.GEMINI_API_KEY || "";
+    console.log("Gemini key loaded:", key ? "YES ✓" : "MISSING ✗");
+    return key;
   } catch (e) {
     return "";
   }
@@ -351,7 +352,7 @@ export default function App() {
         setError("AI initialization failed. Check your API key.");
         return;
       }
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
       const prompt = `Based on the theme of "${projectName}" (${projectDesc}) and the namespace "${namespace}", suggest exactly 5 unique furniture or decoration additions for a Minecraft Bedrock Add-on. 
       ${forgeGuide ? `User Guidance/Focus: "${forgeGuide}"` : ''}
       
@@ -376,9 +377,11 @@ export default function App() {
       Return ONLY a raw JSON array:
       [ { "name": "string", "states": [string], "description": "string", "geometry": "JSON_STRING", "script": "STRING" }, ... ]`;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const result = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+      });
+      const text = result.text ?? "";
       const start = text.indexOf('[');
       const end = text.lastIndexOf(']');
       if (start === -1 || end === -1) throw new Error("AI response did not contain a valid JSON array.");
@@ -409,15 +412,12 @@ export default function App() {
         return;
       }
       const idea = ideas[index];
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const promptText = `Refine this Minecraft Bedrock idea based on user feedback: "${editPrompt}"
-          Original: ${JSON.stringify(idea)}
-          
-          Return ONLY the updated JSON object for this single item.`;
-      
-      const result = await model.generateContent(promptText);
-      const response = await result.response;
-      const text = response.text();
+      const result = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+      });
+      const text = result.text ?? "";
+
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}');
       const updatedIdea = JSON.parse(text.substring(start, end + 1));
@@ -644,7 +644,13 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
       
       if (!ai) return;
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent(`Convert this Minecraft Java block model to Bedrock Edition format.
+      const result = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+      });
+      const text = result.text ?? "";;
+
+         `Convert this Minecraft Java block model to Bedrock Edition format.
           1. Geometry: format_version 1.12.0, identifier "geometry.${filename.replace('.json', '')}".
           2. Block State: standard 1.21.30 format for "${namespace}:${filename.replace('.json', '')}".
           3. Behavior Script: A COMPLETE, valid Minecraft Bedrock script using @minecraft/server API v1.9.0. Rules:
@@ -654,9 +660,9 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
              - Return only the function body code, no imports, no exports
           4. Client Entity (Optional): standard 1.10.0 format.
           Return a JSON object: { "geometry": "STRING", "block_state": "STRING", "script": "STRING", "client_entity": "STRING" }
-          Java Model: ${javaJson}`);
+          Java Model: ${javaJson}`;
       
-      const aiRes = (await result.response).text();
+      const aiRes = (await result.responseId).text();
       const raw = aiRes.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(raw);
       const bedrockGeo = parsed.geometry || "";
